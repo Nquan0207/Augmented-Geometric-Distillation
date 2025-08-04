@@ -129,11 +129,10 @@ if __name__ == '__main__':
     parser.add_argument("--embedding", type=int, default=2048)
     args = parser.parse_args()
     # loss configs
-    parser.add_argument("--beta",  type=float, default=1.0,
-                        help="weight for triplet loss")
-    parser.add_argument("--gamma", type=float, default=1.0,
-                        help="weight for asymmetric SupCon loss")
+    parser.add_argument("--beta",  type=float, default=1.0, help="weight for triplet loss")
+    parser.add_argument("--gamma", type=float, default=1.0, help="weight for asymmetric SupCon loss")
     parser.add_argument("--supcon-temp", type=float, default=0.1, help="temperature for SupCon loss")
 
     # args.seed = 6677
+    args = parser.parse_args()
     main(args)

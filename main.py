@@ -133,6 +133,7 @@ if __name__ == '__main__':
                         help="weight for triplet loss")
     parser.add_argument("--gamma", type=float, default=1.0,
                         help="weight for asymmetric SupCon loss")
+    parser.add_argument("--supcon-temp", type=float, default=0.1, help="temperature for SupCon loss")
 
     # args.seed = 6677
     main(args)

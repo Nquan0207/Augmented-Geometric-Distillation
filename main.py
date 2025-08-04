@@ -15,7 +15,7 @@ from reid.utils import load_checkpoint, CheckpointManager
 from reid.utils import WarmupLRScheduler
 from reid.utils import before_run, build_optimizer
 from reid.models import ResNet, Linear, Networks
-
+from reid.loss.base import AsymmetricSupConLoss
 
 def main(args):
     before_run(args)
@@ -64,11 +64,16 @@ def main(args):
                                      base_lr=args.learning_rate, milestones=args.epochs_decay,
                                      start_epoch=epoch)
 
-    # Trainer
-    trainer = trainers.SupervisedTrainer(networks=networks,
-                                         optimizer=optimizer_main,
-                                         lr_scheduler=lr_scheduler,
-                                         )
+    supcon_criterion = AsymmetricSupConLoss(temperature=args.supcon_temp)
+
+    trainer = trainers.SupervisedTrainer(
+        networks=networks,
+        optimizer=optimizer_main,
+        lr_scheduler=lr_scheduler,
+        supcon_criterion=supcon_criterion,
+        supcon_weight=args.gamma,
+        triplet_weight=args.beta,
+    )
 
     # ------------------- Training -------------------
 
@@ -123,6 +128,11 @@ if __name__ == '__main__':
     parser.add_argument("--depth", type=int, default=50, choices=[34, 50])
     parser.add_argument("--embedding", type=int, default=2048)
     args = parser.parse_args()
+    # loss configs
+    parser.add_argument("--beta",  type=float, default=1.0,
+                        help="weight for triplet loss")
+    parser.add_argument("--gamma", type=float, default=1.0,
+                        help="weight for asymmetric SupCon loss")
 
     # args.seed = 6677
     main(args)

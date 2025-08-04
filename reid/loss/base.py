@@ -304,3 +304,33 @@ class MMDLoss2(object):
         sigmas = torch.tensor(sigmas)[:, None, None].to(device).float()
         sigmas = -1 / (2 * sigmas)
         return sigmas
+
+class AsymmetricSupConLoss(nn.Module):
+    def __init__(self, temperature=0.1):
+        super().__init__()
+        self.temperature = temperature
+
+    def forward(self, features, labels, cur_range):
+        # features: [B, peers, D], labels: [B], cur_range=(start,end)
+        B, P, D = features.shape
+        x = features.view(B*P, D)
+        x = F.normalize(x, dim=1)
+        sim = x @ x.T / self.temperature        # [B*P, B*P]
+
+        # build a mask of “positives” only for anchors in cur_range
+        labs = labels.repeat_interleave(P)       # [B*P]
+        is_anchor = (labs >= cur_range[0]) & (labs < cur_range[1])
+        pos_mask = (labs.unsqueeze(1)==labs.unsqueeze(0)) & is_anchor.unsqueeze(1)
+
+        # remove self‐similarity
+        diag = torch.eye(B*P, device=sim.device).bool()
+        sim.masked_fill_(diag, float('-inf'))
+
+        # compute log‐softmax
+        logp = F.log_softmax(sim, dim=1)
+
+        # average over each anchor’s positives
+        pos_logp = (pos_mask.float() * logp).sum(dim=1)
+        n_pos    = pos_mask.sum(dim=1).clamp(min=1).float()
+        return -(pos_logp / n_pos).mean()
+

@@ -12,6 +12,9 @@ class SupervisedTrainer(Trainer):
                  networks,
                  optimizer,
                  lr_scheduler,
+                 supcon_criterion=None,
+                 supcon_weight=1.0,
+                 triplet_weight=1.0,
                  **kwargs,
                  ):
 
@@ -20,10 +23,14 @@ class SupervisedTrainer(Trainer):
         self.trainables = [self.networks]
         self.optimizer = optimizer
         self.lr_scheduler = lr_scheduler
+        self.supcon_criterion = supcon_criterion
+        self.supcon_weight = supcon_weight
+        self.triplet_weight = triplet_weight
 
         self.meters = AverageMeters(AverageMeter("Batch Time"),
                                     AverageMeter("Pid Loss"),
                                     AverageMeter("Triplet Loss"),
+                                    AverageMeter("SupCon Loss"),
                                     )
 
     def train(self, epoch, training_loader):
@@ -54,8 +61,20 @@ class SupervisedTrainer(Trainer):
     def _compute_loss(self, outputs, pids):
         pooled, preds = outputs["global"], outputs["preds"]
         pid_loss, triplet_loss = self.basic_criterion(pooled, preds, pids)
-        loss = pid_loss + triplet_loss
-        return loss, [pid_loss.item(), triplet_loss.item()]
+        # Compute SupCon loss if criterion is provided
+        if self.supcon_criterion is not None:
+            features = outputs.get("features", None)
+            if features is None:
+                # fallback: unsqueeze to [B,1,D]
+                features = pooled.unsqueeze(1)
+            # cur_range: use all labels as anchors by default
+            cur_range = (pids.min().item(), pids.max().item() + 1)
+            supcon_loss = self.supcon_criterion(features, pids, cur_range)
+        else:
+            supcon_loss = 0.0
+        # Combine losses with weights
+        loss = pid_loss + self.triplet_weight * triplet_loss + self.supcon_weight * supcon_loss
+        return loss, [pid_loss.item(), triplet_loss.item(), float(supcon_loss)]
 
 
 class SupervisedXTrainer(SupervisedTrainer):

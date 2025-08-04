@@ -127,7 +127,6 @@ if __name__ == '__main__':
     parser.add_argument("--last-stride", type=int, default=2, choices=[1, 2])
     parser.add_argument("--depth", type=int, default=50, choices=[34, 50])
     parser.add_argument("--embedding", type=int, default=2048)
-    args = parser.parse_args()
     # loss configs
     parser.add_argument("--beta",  type=float, default=1.0, help="weight for triplet loss")
     parser.add_argument("--gamma", type=float, default=1.0, help="weight for asymmetric SupCon loss")
